@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ヘルスログ - 毎朝の健康記録</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    }
+    /* 星評価のホバー・タップ用スタイル */
+    .star-btn svg {
+      transition: transform 0.15s ease, fill 0.15s ease, stroke 0.15s ease;
+    }
+    .star-btn:active svg {
+      transform: scale(1.2);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen antialiased flex flex-col">
+
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center shadow-sm">
+          <i data-lucide="activity" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-800 leading-tight">HealthLog</h1>
+          <p class="text-[11px] text-slate-400 font-medium">朝の体重・睡眠トラッカー</p>
+        </div>
+      </div>
+
+      <!-- デスクトップ／タブレット向けタブナビ -->
+      <nav class="flex p-1 bg-slate-100 rounded-xl space-x-1">
+        <button id="nav-record-btn" onclick="switchTab('record')" class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-teal-600 shadow-sm">
+          <i data-lucide="edit-3" class="w-4 h-4"></i>
+          <span>記録する</span>
+        </button>
+        <button id="nav-stats-btn" onclick="switchTab('stats')" class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-500 hover:text-slate-800">
+          <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+          <span>集計・一覧</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-2">
+    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center space-x-2 text-sm font-medium">
+      <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-teal-400"></i>
+      <span id="toast-message">保存しました</span>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 mb-16 sm:mb-8">
+
+    <!-- ============================================== -->
+    <!-- タブ1: スマホ入力フォーム（毎朝の記録） -->
+    <!-- ============================================== -->
+    <section id="tab-record" class="space-y-6 max-w-md mx-auto">
+      <div class="text-center sm:text-left">
+        <h2 class="text-xl font-bold text-slate-800">今日の記録をつける</h2>
+        <p class="text-xs text-slate-500 mt-1">朝起きたらすぐ入力して日々の変化を把握しましょう</p>
+      </div>
+
+      <form id="health-form" onsubmit="handleSave(event)" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-5">
+        
+        <!-- 日付選択 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">日付</label>
+          <div class="relative">
+            <input type="date" id="record-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+          </div>
+        </div>
+
+        <!-- 体重 & 体脂肪率 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>体重</span>
+              <span class="text-[10px] text-teal-600 font-normal">必須</span>
+            </label>
+            <div class="relative">
+              <input type="number" step="0.1" min="20" max="250" id="weight" placeholder="60.5" required
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-9">
+              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">kg</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">体脂肪率</label>
+            <div class="relative">
+              <input type="number" step="0.1" min="3" max="60" id="body-fat" placeholder="18.5"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-8">
+              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 睡眠時間 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">昨夜の睡眠時間</label>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="relative">
+              <input type="number" min="0" max="24" id="sleep-hours" placeholder="7" value="7"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-12">
+              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">時間</span>
+            </div>
+            <div class="relative">
+              <input type="number" min="0" max="59" step="5" id="sleep-minutes" placeholder="30" value="0"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-10">
+              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">分</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 今日の気分（星1〜5） -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">今日の気分・体調</label>
+            <span id="mood-label" class="text-xs font-semibold text-teal-600">普通 (3)</span>
+          </div>
+          <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 px-4">
+            <input type="hidden" id="mood" value="3">
+            <!-- 5つの星ボタン -->
+            <button type="button" onclick="setMood(1)" class="star-btn p-1.5 focus:outline-none" aria-label="星1">
+              <i data-lucide="star" class="w-6 h-6 star-1 text-amber-400 fill-amber-400"></i>
+            </button>
+            <button type="button" onclick="setMood(2)" class="star-btn p-1.5 focus:outline-none" aria-label="星2">
+              <i data-lucide="star" class="w-6 h-6 star-2 text-amber-400 fill-amber-400"></i>
+            </button>
+            <button type="button" onclick="setMood(3)" class="star-btn p-1.5 focus:outline-none" aria-label="星3">
+              <i data-lucide="star" class="w-6 h-6 star-3 text-amber-400 fill-amber-400"></i>
+            </button>
+            <button type="button" onclick="setMood(4)" class="star-btn p-1.5 focus:outline-none" aria-label="星4">
+              <i data-lucide="star" class="w-6 h-6 star-4 text-slate-300"></i>
+            </button>
+            <button type="button" onclick="setMood(5)" class="star-btn p-1.5 focus:outline-none" aria-label="星5">
+              <i data-lucide="star" class="w-6 h-6 star-5 text-slate-300"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- メモ欄 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">ひとことメモ</label>
+          <textarea id="memo" rows="2" placeholder="寝起きすっきり、少し夜食を食べた等"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 resize-none"></textarea>
+        </div>
+
+        <!-- 保存ボタン -->
+        <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center space-x-2">
+          <i data-lucide="check" class="w-5 h-5"></i>
+          <span class="text-base tracking-wide">記録を保存する</span>
+        </button>
+      </form>
+    </section>
+
+
+    <!-- ============================================== -->
+    <!-- タブ2: PC/タブレット集計・データ一覧 -->
+    <!-- ============================================== -->
+    <section id="tab-stats" class="space-y-6 hidden">
+      
+      <!-- ヘッダーアクション & サマリー -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800">健康データの集計・管理</h2>
+          <p class="text-xs text-slate-500 mt-0.5">記録したデータをブラウザ上で集計し、ワンクリックでCSV出力できます</p>
+        </div>
+        <div class="flex items-center space-x-2 self-start sm:self-auto">
+          <!-- CSVダウンロードボタン -->
+          <button onclick="exportToCSV()" class="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>CSV出力（Excel/スプシ用）</span>
+          </button>
+          <!-- サンプル投入ボタン -->
+          <button onclick="loadSampleData()" title="お試し用データ投入" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>サンプル</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIカード（サマリー表示） -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- 最新体重 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">最新体重</span>
+            <i data-lucide="scale" class="w-4 h-4 text-teal-500"></i>
+          </div>
+          <div class="flex items-baseline space-x-1">
+            <span id="stat-latest-weight" class="text-2xl font-bold text-slate-800">--</span>
+            <span class="text-xs font-medium text-slate-400">kg</span>
+          </div>
+          <p id="stat-weight-diff" class="text-[11px] font-medium text-slate-500 mt-1">前回比: --</p>
+        </div>
+
+        <!-- 体脂肪率 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">最新体脂肪率</span>
+            <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-500"></i>
+          </div>
+          <div class="flex items-baseline space-x-1">
+            <span id="stat-latest-fat" class="text-2xl font-bold text-slate-800">--</span>
+            <span class="text-xs font-medium text-slate-400">%</span>
+          </div>
+          <p class="text-[11px] font-medium text-slate-400 mt-1">直近記録</p>
+        </div>
+
+        <!-- 平均睡眠時間 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">平均睡眠時間</span>
+            <i data-lucide="moon" class="w-4 h-4 text-blue-500"></i>
+          </div>
+          <div class="flex items-baseline space-x-1">
+            <span id="stat-avg-sleep" class="text-2xl font-bold text-slate-800">--</span>
+            <span class="text-xs font-medium text-slate-400">時間</span>
+          </div>
+          <p class="text-[11px] font-medium text-slate-400 mt-1">全体平均</p>
+        </div>
+
+        <!-- 総記録日数 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">記録日数</span>
+            <i data-lucide="calendar" class="w-4 h-4 text-emerald-500"></i>
+          </div>
+          <div class="flex items-baseline space-x-1">
+            <span id="stat-total-count" class="text-2xl font-bold text-slate-800">0</span>
+            <span class="text-xs font-medium text-slate-400">日</span>
+          </div>
+          <p class="text-[11px] font-medium text-slate-400 mt-1">継続中</p>
+        </div>
+      </div>
+
+      <!-- データテーブル -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-bold text-sm text-slate-800">記録ログ一覧</h3>
+          <span id="log-count" class="text-xs text-slate-400 font-medium">全 0 件</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-50 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                <th class="py-3 px-4">日付</th>
+                <th class="py-3 px-4">体重</th>
+                <th class="py-3 px-4">体脂肪</th>
+                <th class="py-3 px-4">睡眠時間</th>
+                <th class="py-3 px-4">気分</th>
+                <th class="py-3 px-4 min-w-[150px]">メモ</th>
+                <th class="py-3 px-4 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="records-table-body" class="divide-y divide-slate-100 text-slate-700">
+              <!-- JSで動的生成 -->
+            </tbody>
+          </table>
+        </div>
+        <!-- データが空の時の表示 -->
+        <div id="empty-state" class="p-8 text-center hidden">
+          <i data-lucide="clipboard-list" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
+          <p class="text-sm font-semibold text-slate-600">データがまだありません</p>
+          <p class="text-xs text-slate-400 mt-1">「記録する」タブから今日のデータを登録してみましょう。</p>
+        </div>
+      </div>
+
+      <!-- スプレッドシート連携ガイド -->
+      <div class="bg-teal-50/60 border border-teal-200/60 rounded-2xl p-4 sm:p-5 flex items-start space-x-3.5">
+        <i data-lucide="info" class="w-5 h-5 text-teal-600 shrink-0 mt-0.5"></i>
+        <div class="text-xs text-slate-600 space-y-1">
+          <h4 class="font-bold text-teal-900 text-sm">💡 スプレッドシートへの連携方法</h4>
+          <p>「CSV出力」ボタンを押すと、Google スプレッドシートやExcelにそのままドラッグ＆ドロップでインポートできるファイル（BOM付きUTF-8）が生成されます。</p>
+          <p class="text-[11px] text-slate-500">※ Google スプレッドシートの「ファイル」→「インポート」→「アップロード」から開くだけでグラフ作成や自由な関数集計が可能です。</p>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- 画面下部モバイルフッター（スマホ時に押しやすいナビ） -->
+  <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 flex items-center justify-around z-30 shadow-lg">
+    <button onclick="switchTab('record')" id="mobile-nav-record" class="flex flex-col items-center space-y-1 text-teal-600 font-bold px-4 py-1">
+      <i data-lucide="edit-3" class="w-5 h-5"></i>
+      <span class="text-[11px]">記録</span>
+    </button>
+    <button onclick="switchTab('stats')" id="mobile-nav-stats" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 font-medium px-4 py-1">
+      <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+      <span class="text-[11px]">集計・一覧</span>
+    </button>
+  </div>
+
+  <script>
+    // ==========================================
+    // データ管理
+    // ==========================================
+    const STORAGE_KEY = 'health_tracker_records_v1';
+    let currentMood = 3;
+    const moodLabels = {
+      1: '最悪 (1)',
+      2: 'いまいち (2)',
+      3: '普通 (3)',
+      4: '良好 (4)',
+      5: '絶好調 (5)'
+    };
+
+    // 初期起動
+    window.onload = function() {
+      lucide.createIcons();
+      // 今日の日付をセット
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('record-date').value = today;
+
+      // 既存データ確認（なければサンプルを促す、またはそのまま表示）
+      const data = getRecords();
+      if (data.length === 0) {
+        // 初回体験をよくするためサンプルデータをセット
+        initDefaultSampleData();
+      }
+      renderStats();
+    };
+
+    // ローカルストレージから取得
+    function getRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        console.error("Failed to load records", e);
+        return [];
+      }
+    }
+
+    // ローカルストレージへ保存
+    function saveRecords(records) {
+      try {
+        // 日付降順に並び替え
+        records.sort((a, b) => new Date(b.date) - new Date(a.date));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      } catch (e) {
+        console.error("Failed to save records", e);
+      }
+    }
+
+    // ==========================================
+    // 気分レーティング（星評価）
+    // ==========================================
+    function setMood(val) {
+      currentMood = val;
+      document.getElementById('mood').value = val;
+      document.getElementById('mood-label').textContent = moodLabels[val];
+
+      for (let i = 1; i <= 5; i++) {
+        const star = document.querySelector(`.star-${i}`);
+        if (i <= val) {
+          star.classList.remove('text-slate-300');
+          star.classList.add('text-amber-400', 'fill-amber-400');
+        } else {
+          star.classList.remove('text-amber-400', 'fill-amber-400');
+          star.classList.add('text-slate-300');
+        }
+      }
+    }
+
+    // ==========================================
+    // タブ切り替え
+    // ==========================================
+    function switchTab(tab) {
+      const recordTab = document.getElementById('tab-record');
+      const statsTab = document.getElementById('tab-stats');
+      
+      const navRecord = document.getElementById('nav-record-btn');
+      const navStats = document.getElementById('nav-stats-btn');
+      const mobileNavRecord = document.getElementById('mobile-nav-record');
+      const mobileNavStats = document.getElementById('mobile-nav-stats');
+
+      if (tab === 'record') {
+        recordTab.classList.remove('hidden');
+        statsTab.classList.add('hidden');
+
+        // デスクトップ用タブボタンスタイル
+        navRecord.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-teal-600 shadow-sm";
+        navStats.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-500 hover:text-slate-800";
+
+        // モバイル用フッタースタイル
+        mobileNavRecord.className = "flex flex-col items-center space-y-1 text-teal-600 font-bold px-4 py-1";
+        mobileNavStats.className = "flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 font-medium px-4 py-1";
+      } else {
+        recordTab.classList.add('hidden');
+        statsTab.classList.remove('hidden');
+
+        navRecord.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-500 hover:text-slate-800";
+        navStats.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-teal-600 shadow-sm";
+
+        mobileNavRecord.className = "flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 font-medium px-4 py-1";
+        mobileNavStats.className = "flex flex-col items-center space-y-1 text-teal-600 font-bold px-4 py-1";
+
+        renderStats();
+      }
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // フォーム送信（保存）
+    // ==========================================
+    function handleSave(event) {
+      event.preventDefault();
+
+      const date = document.getElementById('record-date').value;
+      const weight = parseFloat(document.getElementById('weight').value);
+      const fatVal = document.getElementById('body-fat').value;
+      const bodyFat = fatVal ? parseFloat(fatVal) : null;
+      const hours = parseInt(document.getElementById('sleep-hours').value) || 0;
+      const minutes = parseInt(document.getElementById('sleep-minutes').value) || 0;
+      const memo = document.getElementById('memo').value.trim();
+
+      const newRecord = {
+        id: 'rec_' + Date.now(),
+        date: date,
+        weight: weight,
+        bodyFat: bodyFat,
+        sleepHours: hours,
+        sleepMinutes: minutes,
+        mood: currentMood,
+        memo: memo,
+        updatedAt: new Date().toISOString()
+      };
+
+      let records = getRecords();
+
+      // 同じ日付が既に存在する場合は上書き更新、なければ追加
+      const existingIndex = records.findIndex(r => r.date === date);
+      if (existingIndex >= 0) {
+        records[existingIndex] = { ...records[existingIndex], ...newRecord, id: records[existingIndex].id };
+      } else {
+        records.push(newRecord);
+      }
+
+      saveRecords(records);
+      showToast('記録を保存しました！');
+
+      // 記録完了後、集計画面に切り替えることも可能ですが、スマホでの入力完了感を重視してリセットまたは集計へ
+      setTimeout(() => {
+        switchTab('stats');
+      }, 500);
+    }
+
+    // 削除処理
+    function deleteRecord(id) {
+      let records = getRecords();
+      records = records.filter(r => r.id !== id);
+      saveRecords(records);
+      renderStats();
+      showToast('記録を削除しました');
+    }
+
+    // ==========================================
+    // 集計表示 & テーブルレンダリング
+    // ==========================================
+    function renderStats() {
+      const records = getRecords();
+      const tbody = document.getElementById('records-table-body');
+      const emptyState = document.getElementById('empty-state');
+      const countLabel = document.getElementById('log-count');
+
+      countLabel.textContent = `全 ${records.length} 件`;
+
+      if (records.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        document.getElementById('stat-latest-weight').textContent = '--';
+        document.getElementById('stat-weight-diff').textContent = '前回比: --';
+        document.getElementById('stat-latest-fat').textContent = '--';
+        document.getElementById('stat-avg-sleep').textContent = '--';
+        document.getElementById('stat-total-count').textContent = '0';
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      // 1. 最新体重 & 前回比
+      const latest = records[0];
+      document.getElementById('stat-latest-weight').textContent = latest.weight.toFixed(1);
+      if (records.length > 1) {
+        const prev = records[1];
+        const diff = (latest.weight - prev.weight).toFixed(1);
+        const sign = diff > 0 ? `+${diff}` : `${diff}`;
+        const color = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-teal-600' : 'text-slate-500';
+        document.getElementById('stat-weight-diff').innerHTML = `前回比: <span class="${color} font-bold">${sign} kg</span>`;
+      } else {
+        document.getElementById('stat-weight-diff').textContent = '前回比: 初回記録';
+      }
+
+      // 2. 最新体脂肪
+      const latestFatItem = records.find(r => r.bodyFat !== null && r.bodyFat !== undefined);
+      if (latestFatItem) {
+        document.getElementById('stat-latest-fat').textContent = latestFatItem.bodyFat.toFixed(1);
+      } else {
+        document.getElementById('stat-latest-fat').textContent = '--';
+      }
+
+      // 3. 平均睡眠時間
+      const totalSleepHours = records.reduce((acc, r) => acc + (r.sleepHours || 0) + ((r.sleepMinutes || 0) / 60), 0);
+      const avgSleep = (totalSleepHours / records.length).toFixed(1);
+      document.getElementById('stat-avg-sleep').textContent = avgSleep;
+
+      // 4. 総記録日数
+      document.getElementById('stat-total-count').textContent = records.length;
+
+      // テーブル構築
+      tbody.innerHTML = records.map(r => {
+        // 気分の星マーク生成
+        let starIcons = '';
+        for (let i = 1; i <= 5; i++) {
+          starIcons += i <= r.mood 
+            ? '<span class="text-amber-400">★</span>' 
+            : '<span class="text-slate-200">★</span>';
+        }
+
+        const fatDisplay = r.bodyFat !== null && !isNaN(r.bodyFat) ? `${r.bodyFat.toFixed(1)}%` : '<span class="text-slate-300">-</span>';
+        const sleepDisplay = `${r.sleepHours || 0}h ${r.sleepMinutes || 0}m`;
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-3 px-4 font-semibold text-slate-800 text-xs sm:text-sm whitespace-nowrap">${r.date}</td>
+            <td class="py-3 px-4 font-bold text-teal-700 whitespace-nowrap">${r.weight.toFixed(1)} kg</td>
+            <td class="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">${fatDisplay}</td>
+            <td class="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">${sleepDisplay}</td>
+            <td class="py-3 px-4 text-sm whitespace-nowrap" title="気分: ${r.mood}/5">${starIcons}</td>
+            <td class="py-3 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${r.memo || ''}">${r.memo || '<span class="text-slate-300">-</span>'}</td>
+            <td class="py-3 px-4 text-center whitespace-nowrap">
+              <button onclick="deleteRecord('${r.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors" title="削除">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // CSVエクスポート（BOM付きUTF-8対応）
+    // ==========================================
+    function exportToCSV() {
+      const records = getRecords();
+      if (records.length === 0) {
+        showToast('エクスポートするデータがありません');
+        return;
+      }
+
+      // ヘッダー定義
+      const headers = ['日付', '体重(kg)', '体脂肪率(%)', '睡眠時間(時間)', '睡眠時間(分)', '合計睡眠時間(時間換算)', '気分(1-5)', 'メモ'];
+      
+      const rows = records.map(r => {
+        const totalSleep = ((r.sleepHours || 0) + ((r.sleepMinutes || 0) / 60)).toFixed(2);
+        const escapedMemo = (r.memo || '').replace(/"/g, '""'); // CSV用エスケープ
+        return [
+          r.date,
+          r.weight,
+          r.bodyFat !== null ? r.bodyFat : '',
+          r.sleepHours || 0,
+          r.sleepMinutes || 0,
+          totalSleep,
+          r.mood,
+          `"${escapedMemo}"`
+        ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\r\n');
+
+      // Excel・スプレッドシート文字化け防止用 UTF-8 BOM
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const nowStr = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `健康記録_${nowStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast('CSVファイルを書き出しました');
+    }
+
+    // ==========================================
+    // サンプルデータの投入
+    // ==========================================
+    function initDefaultSampleData() {
+      const today = new Date();
+      const samples = [];
+      const weights = [61.4, 61.2, 61.0, 60.8, 60.5];
+      const fats = [19.2, 19.0, 18.9, 18.7, 18.5];
+      const sleeps = [
+        { h: 6, m: 45, mood: 3, memo: '夜更かし気味だった' },
+        { h: 7, m: 15, mood: 4, memo: '朝散歩をして気持ち良い' },
+        { h: 7, m: 0,  mood: 3, memo: '通常通り' },
+        { h: 8, m: 0,  mood: 5, memo: 'ぐっすり眠れた' },
+        { h: 7, m: 30, mood: 4, memo: 'すっきり起きられた' }
+      ];
+
+      for (let i = 4; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        samples.push({
+          id: 'sample_' + i,
+          date: dateStr,
+          weight: weights[4 - i],
+          bodyFat: fats[4 - i],
+          sleepHours: sleeps[4 - i].h,
+          sleepMinutes: sleeps[4 - i].m,
+          mood: sleeps[4 - i].mood,
+          memo: sleeps[4 - i].memo,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      saveRecords(samples);
+    }
+
+    function loadSampleData() {
+      initDefaultSampleData();
+      renderStats();
+      showToast('サンプルデータを読み込みました');
+    }
+
+    // ==========================================
+    // トースト通知ユーティリティ
+    // ==========================================
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toast-message');
+      msg.textContent = message;
+
+      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+      }, 2400);
+    }
+  </script>
+</body>
+</html>
