@@ -2,370 +2,331 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ヘルスログ - 毎朝の健康記録</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>毎朝の健康記録</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-sub: #64748b;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
     body {
-      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
     }
-    /* 星評価のホバー・タップ用スタイル */
-    .star-btn svg {
-      transition: transform 0.15s ease, fill 0.15s ease, stroke 0.15s ease;
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
     }
-    .star-btn:active svg {
-      transform: scale(1.2);
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    header {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    input[type="date"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      color: var(--text);
+      background-color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .unit {
+      position: absolute;
+      right: 14px;
+      color: var(--text-sub);
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+
+    /* 気分ボタン (星1〜5) */
+    .mood-container {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .mood-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .mood-btn span {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    .mood-btn.active {
+      border-color: var(--primary);
+      background-color: #eff6ff;
+    }
+
+    .mood-btn.active span {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    textarea {
+      resize: none;
+      height: 70px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 8px;
+    }
+
+    .submit-btn:disabled {
+      background-color: var(--text-sub);
+      cursor: not-allowed;
+    }
+
+    .submit-btn:active:not(:disabled) {
+      background-color: var(--primary-hover);
+    }
+
+    .notice {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      text-align: center;
+      line-height: 1.4;
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen antialiased flex flex-col">
+<body>
 
-  <!-- ヘッダー -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <div class="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center shadow-sm">
-          <i data-lucide="activity" class="w-5 h-5"></i>
+  <div class="container">
+    <div class="card">
+      <header>
+        <h1>毎朝の健康記録</h1>
+        <p class="subtitle">入力内容は自動でスプレッドシートに保存されます</p>
+      </header>
+
+      <form id="healthForm">
+        <!-- 記録日 -->
+        <div class="form-group">
+          <label for="recordDate">記録日</label>
+          <input type="date" id="recordDate" required>
         </div>
-        <div>
-          <h1 class="text-lg font-bold text-slate-800 leading-tight">HealthLog</h1>
-          <p class="text-[11px] text-slate-400 font-medium">朝の体重・睡眠トラッカー</p>
-        </div>
-      </div>
 
-      <!-- デスクトップ／タブレット向けタブナビ -->
-      <nav class="flex p-1 bg-slate-100 rounded-xl space-x-1">
-        <button id="nav-record-btn" onclick="switchTab('record')" class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-teal-600 shadow-sm">
-          <i data-lucide="edit-3" class="w-4 h-4"></i>
-          <span>記録する</span>
-        </button>
-        <button id="nav-stats-btn" onclick="switchTab('stats')" class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-500 hover:text-slate-800">
-          <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
-          <span>集計・一覧</span>
-        </button>
-      </nav>
-    </div>
-  </header>
-
-  <!-- トースト通知 -->
-  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-2">
-    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center space-x-2 text-sm font-medium">
-      <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-teal-400"></i>
-      <span id="toast-message">保存しました</span>
-    </div>
-  </div>
-
-  <!-- メインコンテンツ -->
-  <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 mb-16 sm:mb-8">
-
-    <!-- ============================================== -->
-    <!-- タブ1: スマホ入力フォーム（毎朝の記録） -->
-    <!-- ============================================== -->
-    <section id="tab-record" class="space-y-6 max-w-md mx-auto">
-      <div class="text-center sm:text-left">
-        <h2 class="text-xl font-bold text-slate-800">今日の記録をつける</h2>
-        <p class="text-xs text-slate-500 mt-1">朝起きたらすぐ入力して日々の変化を把握しましょう</p>
-      </div>
-
-      <form id="health-form" onsubmit="handleSave(event)" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-5">
-        
-        <!-- 日付選択 -->
-        <div>
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">日付</label>
-          <div class="relative">
-            <input type="date" id="record-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+        <!-- 体重 -->
+        <div class="form-group">
+          <label for="weight">体重</label>
+          <div class="input-wrapper">
+            <input type="number" id="weight" step="0.1" min="20" max="200" placeholder="65.0" required>
+            <span class="unit">kg</span>
           </div>
         </div>
 
-        <!-- 体重 & 体脂肪率 -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-              <span>体重</span>
-              <span class="text-[10px] text-teal-600 font-normal">必須</span>
-            </label>
-            <div class="relative">
-              <input type="number" step="0.1" min="20" max="250" id="weight" placeholder="60.5" required
-                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-9">
-              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">kg</span>
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">体脂肪率</label>
-            <div class="relative">
-              <input type="number" step="0.1" min="3" max="60" id="body-fat" placeholder="18.5"
-                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-8">
-              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">%</span>
-            </div>
+        <!-- 体脂肪率 -->
+        <div class="form-group">
+          <label for="fat">体脂肪率</label>
+          <div class="input-wrapper">
+            <input type="number" id="fat" step="0.1" min="1" max="60" placeholder="20.0">
+            <span class="unit">%</span>
           </div>
         </div>
 
         <!-- 睡眠時間 -->
-        <div>
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">昨夜の睡眠時間</label>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="relative">
-              <input type="number" min="0" max="24" id="sleep-hours" placeholder="7" value="7"
-                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-12">
-              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">時間</span>
-            </div>
-            <div class="relative">
-              <input type="number" min="0" max="59" step="5" id="sleep-minutes" placeholder="30" value="0"
-                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 pr-10">
-              <span class="absolute right-3 top-2.5 text-xs font-medium text-slate-400">分</span>
-            </div>
+        <div class="form-group">
+          <label for="sleep">睡眠時間</label>
+          <div class="input-wrapper">
+            <input type="number" id="sleep" step="0.5" min="0" max="24" placeholder="7.0" required>
+            <span class="unit">時間</span>
           </div>
         </div>
 
-        <!-- 今日の気分（星1〜5） -->
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">今日の気分・体調</label>
-            <span id="mood-label" class="text-xs font-semibold text-teal-600">普通 (3)</span>
-          </div>
-          <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 px-4">
-            <input type="hidden" id="mood" value="3">
-            <!-- 5つの星ボタン -->
-            <button type="button" onclick="setMood(1)" class="star-btn p-1.5 focus:outline-none" aria-label="星1">
-              <i data-lucide="star" class="w-6 h-6 star-1 text-amber-400 fill-amber-400"></i>
-            </button>
-            <button type="button" onclick="setMood(2)" class="star-btn p-1.5 focus:outline-none" aria-label="星2">
-              <i data-lucide="star" class="w-6 h-6 star-2 text-amber-400 fill-amber-400"></i>
-            </button>
-            <button type="button" onclick="setMood(3)" class="star-btn p-1.5 focus:outline-none" aria-label="星3">
-              <i data-lucide="star" class="w-6 h-6 star-3 text-amber-400 fill-amber-400"></i>
-            </button>
-            <button type="button" onclick="setMood(4)" class="star-btn p-1.5 focus:outline-none" aria-label="星4">
-              <i data-lucide="star" class="w-6 h-6 star-4 text-slate-300"></i>
-            </button>
-            <button type="button" onclick="setMood(5)" class="star-btn p-1.5 focus:outline-none" aria-label="星5">
-              <i data-lucide="star" class="w-6 h-6 star-5 text-slate-300"></i>
-            </button>
+        <!-- 今日の気分 -->
+        <div class="form-group">
+          <label>気分</label>
+          <div class="mood-container">
+            <button type="button" class="mood-btn" onclick="setMood(1)">😞<span>1</span></button>
+            <button type="button" class="mood-btn" onclick="setMood(2)">🙁<span>2</span></button>
+            <button type="button" class="mood-btn active" onclick="setMood(3)">😐<span>3</span></button>
+            <button type="button" class="mood-btn" onclick="setMood(4)">🙂<span>4</span></button>
+            <button type="button" class="mood-btn" onclick="setMood(5)">😆<span>5</span></button>
           </div>
         </div>
 
-        <!-- メモ欄 -->
-        <div>
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">ひとことメモ</label>
-          <textarea id="memo" rows="2" placeholder="寝起きすっきり、少し夜食を食べた等"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 resize-none"></textarea>
+        <!-- メモ -->
+        <div class="form-group">
+          <label for="memo">メモ</label>
+          <textarea id="memo" placeholder="体調の変化、前夜の食事など"></textarea>
         </div>
 
-        <!-- 保存ボタン -->
-        <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center space-x-2">
-          <i data-lucide="check" class="w-5 h-5"></i>
-          <span class="text-base tracking-wide">記録を保存する</span>
-        </button>
+        <button type="submit" class="submit-btn" id="submitBtn">記録を送信する</button>
+        <p class="notice">※送信完了後、PCのスプレッドシートに1行追加されます。</p>
       </form>
-    </section>
-
-
-    <!-- ============================================== -->
-    <!-- タブ2: PC/タブレット集計・データ一覧 -->
-    <!-- ============================================== -->
-    <section id="tab-stats" class="space-y-6 hidden">
-      
-      <!-- ヘッダーアクション & サマリー -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-bold text-slate-800">健康データの集計・管理</h2>
-          <p class="text-xs text-slate-500 mt-0.5">記録したデータをブラウザ上で集計し、ワンクリックでCSV出力できます</p>
-        </div>
-        <div class="flex items-center space-x-2 self-start sm:self-auto">
-          <!-- CSVダウンロードボタン -->
-          <button onclick="exportToCSV()" class="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors">
-            <i data-lucide="download" class="w-4 h-4"></i>
-            <span>CSV出力（Excel/スプシ用）</span>
-          </button>
-          <!-- サンプル投入ボタン -->
-          <button onclick="loadSampleData()" title="お試し用データ投入" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>サンプル</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- KPIカード（サマリー表示） -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <!-- 最新体重 -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div class="flex items-center justify-between text-slate-400 mb-1">
-            <span class="text-xs font-medium">最新体重</span>
-            <i data-lucide="scale" class="w-4 h-4 text-teal-500"></i>
-          </div>
-          <div class="flex items-baseline space-x-1">
-            <span id="stat-latest-weight" class="text-2xl font-bold text-slate-800">--</span>
-            <span class="text-xs font-medium text-slate-400">kg</span>
-          </div>
-          <p id="stat-weight-diff" class="text-[11px] font-medium text-slate-500 mt-1">前回比: --</p>
-        </div>
-
-        <!-- 体脂肪率 -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div class="flex items-center justify-between text-slate-400 mb-1">
-            <span class="text-xs font-medium">最新体脂肪率</span>
-            <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-500"></i>
-          </div>
-          <div class="flex items-baseline space-x-1">
-            <span id="stat-latest-fat" class="text-2xl font-bold text-slate-800">--</span>
-            <span class="text-xs font-medium text-slate-400">%</span>
-          </div>
-          <p class="text-[11px] font-medium text-slate-400 mt-1">直近記録</p>
-        </div>
-
-        <!-- 平均睡眠時間 -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div class="flex items-center justify-between text-slate-400 mb-1">
-            <span class="text-xs font-medium">平均睡眠時間</span>
-            <i data-lucide="moon" class="w-4 h-4 text-blue-500"></i>
-          </div>
-          <div class="flex items-baseline space-x-1">
-            <span id="stat-avg-sleep" class="text-2xl font-bold text-slate-800">--</span>
-            <span class="text-xs font-medium text-slate-400">時間</span>
-          </div>
-          <p class="text-[11px] font-medium text-slate-400 mt-1">全体平均</p>
-        </div>
-
-        <!-- 総記録日数 -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div class="flex items-center justify-between text-slate-400 mb-1">
-            <span class="text-xs font-medium">記録日数</span>
-            <i data-lucide="calendar" class="w-4 h-4 text-emerald-500"></i>
-          </div>
-          <div class="flex items-baseline space-x-1">
-            <span id="stat-total-count" class="text-2xl font-bold text-slate-800">0</span>
-            <span class="text-xs font-medium text-slate-400">日</span>
-          </div>
-          <p class="text-[11px] font-medium text-slate-400 mt-1">継続中</p>
-        </div>
-      </div>
-
-      <!-- データテーブル -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="font-bold text-sm text-slate-800">記録ログ一覧</h3>
-          <span id="log-count" class="text-xs text-slate-400 font-medium">全 0 件</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr class="bg-slate-50 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
-                <th class="py-3 px-4">日付</th>
-                <th class="py-3 px-4">体重</th>
-                <th class="py-3 px-4">体脂肪</th>
-                <th class="py-3 px-4">睡眠時間</th>
-                <th class="py-3 px-4">気分</th>
-                <th class="py-3 px-4 min-w-[150px]">メモ</th>
-                <th class="py-3 px-4 text-center">操作</th>
-              </tr>
-            </thead>
-            <tbody id="records-table-body" class="divide-y divide-slate-100 text-slate-700">
-              <!-- JSで動的生成 -->
-            </tbody>
-          </table>
-        </div>
-        <!-- データが空の時の表示 -->
-        <div id="empty-state" class="p-8 text-center hidden">
-          <i data-lucide="clipboard-list" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
-          <p class="text-sm font-semibold text-slate-600">データがまだありません</p>
-          <p class="text-xs text-slate-400 mt-1">「記録する」タブから今日のデータを登録してみましょう。</p>
-        </div>
-      </div>
-
-      <!-- スプレッドシート連携ガイド -->
-      <div class="bg-teal-50/60 border border-teal-200/60 rounded-2xl p-4 sm:p-5 flex items-start space-x-3.5">
-        <i data-lucide="info" class="w-5 h-5 text-teal-600 shrink-0 mt-0.5"></i>
-        <div class="text-xs text-slate-600 space-y-1">
-          <h4 class="font-bold text-teal-900 text-sm">💡 スプレッドシートへの連携方法</h4>
-          <p>「CSV出力」ボタンを押すと、Google スプレッドシートやExcelにそのままドラッグ＆ドロップでインポートできるファイル（BOM付きUTF-8）が生成されます。</p>
-          <p class="text-[11px] text-slate-500">※ Google スプレッドシートの「ファイル」→「インポート」→「アップロード」から開くだけでグラフ作成や自由な関数集計が可能です。</p>
-        </div>
-      </div>
-
-    </section>
-
-  </main>
-
-  <!-- 画面下部モバイルフッター（スマホ時に押しやすいナビ） -->
-  <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 flex items-center justify-around z-30 shadow-lg">
-    <button onclick="switchTab('record')" id="mobile-nav-record" class="flex flex-col items-center space-y-1 text-teal-600 font-bold px-4 py-1">
-      <i data-lucide="edit-3" class="w-5 h-5"></i>
-      <span class="text-[11px]">記録</span>
-    </button>
-    <button onclick="switchTab('stats')" id="mobile-nav-stats" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 font-medium px-4 py-1">
-      <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-      <span class="text-[11px]">集計・一覧</span>
-    </button>
+    </div>
   </div>
 
- <script>
-  // ★ここにステップ1で取得したURLを貼り付けます★
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJZF-d1ukeMUGnhA3SuekYpeyAjRhzeYNEGTLViAfRjI47fONkvq6Vo8R3nUc5hJZu/exec';
+  <script>
+    // =========================================================================
+    // ★重要★ 下の「ここにURLを貼り付け」の部分に、
+    // Google Apps Scriptで発行されたウェブアプリURLを貼り付けてください。
+    // 例: const GAS_URL = 'https://script.google.com/macros/s/AKfycby.../exec';
+    // =========================================================================
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJZF-d1ukeMUGnhA3SuekYpeyAjRhzeYNEGTLViAfRjI47fONkvq6Vo8R3nUc5hJZu/exec';
 
-  let selectedMood = 3;
+    let currentMood = 3;
 
-  function setMood(val) {
-    selectedMood = val;
-    document.querySelectorAll('.mood-btn').forEach((btn, idx) => {
-      btn.classList.toggle('active', idx + 1 === val);
-    });
-  }
+    function setMood(score) {
+      currentMood = score;
+      const buttons = document.querySelectorAll('.mood-btn');
+      buttons.forEach((btn, idx) => {
+        btn.classList.toggle('active', idx + 1 === score);
+      });
+    }
 
-  // フォーム送信イベント
-  document.getElementById('healthForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+    // 今日の日付をセット
+    function resetDateToToday() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('recordDate').value = `${yyyy}-${mm}-${dd}`;
+    }
 
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerText;
-    submitBtn.disabled = true;
-    submitBtn.innerText = '送信中...';
+    window.addEventListener('DOMContentLoaded', resetDateToToday);
 
-    const formData = {
-      date: document.getElementById('recordDate').value,
-      weight: document.getElementById('weight').value,
-      fat: document.getElementById('fat').value,
-      sleep: document.getElementById('sleep').value,
-      mood: selectedMood,
-      memo: document.getElementById('memo').value
-    };
+    // フォーム送信処理
+    document.getElementById('healthForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
 
-    // 1. ローカルストレージにもバックアップ保存
-    const records = JSON.parse(localStorage.getItem('health_records') || '[]');
-    records.push(formData);
-    localStorage.setItem('health_records', JSON.stringify(records));
+      if (GAS_URL === 'ここにURLを貼り付け' || !GAS_URL.startsWith('https://script.google.com')) {
+        alert('Google Apps ScriptのURLが設定されていません。コード内の GAS_URL を確認してください。');
+        return;
+      }
 
-    // 2. Google スプレッドシートへ送信
-    try {
-      if (GAS_URL && !GAS_URL.includes('XXXXX')) {
+      const submitBtn = document.getElementById('submitBtn');
+      const originalText = submitBtn.innerText;
+      submitBtn.disabled = true;
+      submitBtn.innerText = '送信中...';
+
+      const payload = {
+        date: document.getElementById('recordDate').value,
+        weight: document.getElementById('weight').value,
+        fat: document.getElementById('fat').value,
+        sleep: document.getElementById('sleep').value,
+        mood: currentMood,
+        memo: document.getElementById('memo').value
+      };
+
+      try {
+        // Google Apps Scriptへ送信
         await fetch(GAS_URL, {
           method: 'POST',
-          mode: 'no-cors', // クロスドメイン通信用
+          mode: 'no-cors',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'text/plain',
           },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(payload)
         });
-      }
-      alert('保存が完了しました！');
-      this.reset();
-      // 今日の日付を再セット
-      document.getElementById('recordDate').value = new Date().toISOString().split('T')[0];
-      setMood(3);
-    } catch (err) {
-      console.error(err);
-      alert('スプレッドシートへの保存に失敗しました（端末内には保存されています）。');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerText = originalText;
-    }
-  });
 
-  // 初期日付セット
-  document.getElementById('recordDate').value = new Date().toISOString().split('T')[0];
-</script>
+        alert('スプレッドシートへ保存しました！');
+
+        // フォームのリセット
+        document.getElementById('healthForm').reset();
+        resetDateToToday();
+        setMood(3);
+      } catch (error) {
+        console.error(error);
+        alert('送信エラーが発生しました。インターネット接続を確認してください。');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = originalText;
+      }
+    });
+  </script>
 </body>
 </html>
