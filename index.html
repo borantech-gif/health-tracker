@@ -302,362 +302,70 @@
     </button>
   </div>
 
-  <script>
-    // ==========================================
-    // データ管理
-    // ==========================================
-    const STORAGE_KEY = 'health_tracker_records_v1';
-    let currentMood = 3;
-    const moodLabels = {
-      1: '最悪 (1)',
-      2: 'いまいち (2)',
-      3: '普通 (3)',
-      4: '良好 (4)',
-      5: '絶好調 (5)'
+ <script>
+  // ★ここにステップ1で取得したURLを貼り付けます★
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJZF-d1ukeMUGnhA3SuekYpeyAjRhzeYNEGTLViAfRjI47fONkvq6Vo8R3nUc5hJZu/exec';
+
+  let selectedMood = 3;
+
+  function setMood(val) {
+    selectedMood = val;
+    document.querySelectorAll('.mood-btn').forEach((btn, idx) => {
+      btn.classList.toggle('active', idx + 1 === val);
+    });
+  }
+
+  // フォーム送信イベント
+  document.getElementById('healthForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.disabled = true;
+    submitBtn.innerText = '送信中...';
+
+    const formData = {
+      date: document.getElementById('recordDate').value,
+      weight: document.getElementById('weight').value,
+      fat: document.getElementById('fat').value,
+      sleep: document.getElementById('sleep').value,
+      mood: selectedMood,
+      memo: document.getElementById('memo').value
     };
 
-    // 初期起動
-    window.onload = function() {
-      lucide.createIcons();
-      // 今日の日付をセット
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('record-date').value = today;
+    // 1. ローカルストレージにもバックアップ保存
+    const records = JSON.parse(localStorage.getItem('health_records') || '[]');
+    records.push(formData);
+    localStorage.setItem('health_records', JSON.stringify(records));
 
-      // 既存データ確認（なければサンプルを促す、またはそのまま表示）
-      const data = getRecords();
-      if (data.length === 0) {
-        // 初回体験をよくするためサンプルデータをセット
-        initDefaultSampleData();
-      }
-      renderStats();
-    };
-
-    // ローカルストレージから取得
-    function getRecords() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-      } catch (e) {
-        console.error("Failed to load records", e);
-        return [];
-      }
-    }
-
-    // ローカルストレージへ保存
-    function saveRecords(records) {
-      try {
-        // 日付降順に並び替え
-        records.sort((a, b) => new Date(b.date) - new Date(a.date));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-      } catch (e) {
-        console.error("Failed to save records", e);
-      }
-    }
-
-    // ==========================================
-    // 気分レーティング（星評価）
-    // ==========================================
-    function setMood(val) {
-      currentMood = val;
-      document.getElementById('mood').value = val;
-      document.getElementById('mood-label').textContent = moodLabels[val];
-
-      for (let i = 1; i <= 5; i++) {
-        const star = document.querySelector(`.star-${i}`);
-        if (i <= val) {
-          star.classList.remove('text-slate-300');
-          star.classList.add('text-amber-400', 'fill-amber-400');
-        } else {
-          star.classList.remove('text-amber-400', 'fill-amber-400');
-          star.classList.add('text-slate-300');
-        }
-      }
-    }
-
-    // ==========================================
-    // タブ切り替え
-    // ==========================================
-    function switchTab(tab) {
-      const recordTab = document.getElementById('tab-record');
-      const statsTab = document.getElementById('tab-stats');
-      
-      const navRecord = document.getElementById('nav-record-btn');
-      const navStats = document.getElementById('nav-stats-btn');
-      const mobileNavRecord = document.getElementById('mobile-nav-record');
-      const mobileNavStats = document.getElementById('mobile-nav-stats');
-
-      if (tab === 'record') {
-        recordTab.classList.remove('hidden');
-        statsTab.classList.add('hidden');
-
-        // デスクトップ用タブボタンスタイル
-        navRecord.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-teal-600 shadow-sm";
-        navStats.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-500 hover:text-slate-800";
-
-        // モバイル用フッタースタイル
-        mobileNavRecord.className = "flex flex-col items-center space-y-1 text-teal-600 font-bold px-4 py-1";
-        mobileNavStats.className = "flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 font-medium px-4 py-1";
-      } else {
-        recordTab.classList.add('hidden');
-        statsTab.classList.remove('hidden');
-
-        navRecord.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-slate-500 hover:text-slate-800";
-        navStats.className = "flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all bg-white text-teal-600 shadow-sm";
-
-        mobileNavRecord.className = "flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 font-medium px-4 py-1";
-        mobileNavStats.className = "flex flex-col items-center space-y-1 text-teal-600 font-bold px-4 py-1";
-
-        renderStats();
-      }
-      lucide.createIcons();
-    }
-
-    // ==========================================
-    // フォーム送信（保存）
-    // ==========================================
-    function handleSave(event) {
-      event.preventDefault();
-
-      const date = document.getElementById('record-date').value;
-      const weight = parseFloat(document.getElementById('weight').value);
-      const fatVal = document.getElementById('body-fat').value;
-      const bodyFat = fatVal ? parseFloat(fatVal) : null;
-      const hours = parseInt(document.getElementById('sleep-hours').value) || 0;
-      const minutes = parseInt(document.getElementById('sleep-minutes').value) || 0;
-      const memo = document.getElementById('memo').value.trim();
-
-      const newRecord = {
-        id: 'rec_' + Date.now(),
-        date: date,
-        weight: weight,
-        bodyFat: bodyFat,
-        sleepHours: hours,
-        sleepMinutes: minutes,
-        mood: currentMood,
-        memo: memo,
-        updatedAt: new Date().toISOString()
-      };
-
-      let records = getRecords();
-
-      // 同じ日付が既に存在する場合は上書き更新、なければ追加
-      const existingIndex = records.findIndex(r => r.date === date);
-      if (existingIndex >= 0) {
-        records[existingIndex] = { ...records[existingIndex], ...newRecord, id: records[existingIndex].id };
-      } else {
-        records.push(newRecord);
-      }
-
-      saveRecords(records);
-      showToast('記録を保存しました！');
-
-      // 記録完了後、集計画面に切り替えることも可能ですが、スマホでの入力完了感を重視してリセットまたは集計へ
-      setTimeout(() => {
-        switchTab('stats');
-      }, 500);
-    }
-
-    // 削除処理
-    function deleteRecord(id) {
-      let records = getRecords();
-      records = records.filter(r => r.id !== id);
-      saveRecords(records);
-      renderStats();
-      showToast('記録を削除しました');
-    }
-
-    // ==========================================
-    // 集計表示 & テーブルレンダリング
-    // ==========================================
-    function renderStats() {
-      const records = getRecords();
-      const tbody = document.getElementById('records-table-body');
-      const emptyState = document.getElementById('empty-state');
-      const countLabel = document.getElementById('log-count');
-
-      countLabel.textContent = `全 ${records.length} 件`;
-
-      if (records.length === 0) {
-        tbody.innerHTML = '';
-        emptyState.classList.remove('hidden');
-        document.getElementById('stat-latest-weight').textContent = '--';
-        document.getElementById('stat-weight-diff').textContent = '前回比: --';
-        document.getElementById('stat-latest-fat').textContent = '--';
-        document.getElementById('stat-avg-sleep').textContent = '--';
-        document.getElementById('stat-total-count').textContent = '0';
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-
-      // 1. 最新体重 & 前回比
-      const latest = records[0];
-      document.getElementById('stat-latest-weight').textContent = latest.weight.toFixed(1);
-      if (records.length > 1) {
-        const prev = records[1];
-        const diff = (latest.weight - prev.weight).toFixed(1);
-        const sign = diff > 0 ? `+${diff}` : `${diff}`;
-        const color = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-teal-600' : 'text-slate-500';
-        document.getElementById('stat-weight-diff').innerHTML = `前回比: <span class="${color} font-bold">${sign} kg</span>`;
-      } else {
-        document.getElementById('stat-weight-diff').textContent = '前回比: 初回記録';
-      }
-
-      // 2. 最新体脂肪
-      const latestFatItem = records.find(r => r.bodyFat !== null && r.bodyFat !== undefined);
-      if (latestFatItem) {
-        document.getElementById('stat-latest-fat').textContent = latestFatItem.bodyFat.toFixed(1);
-      } else {
-        document.getElementById('stat-latest-fat').textContent = '--';
-      }
-
-      // 3. 平均睡眠時間
-      const totalSleepHours = records.reduce((acc, r) => acc + (r.sleepHours || 0) + ((r.sleepMinutes || 0) / 60), 0);
-      const avgSleep = (totalSleepHours / records.length).toFixed(1);
-      document.getElementById('stat-avg-sleep').textContent = avgSleep;
-
-      // 4. 総記録日数
-      document.getElementById('stat-total-count').textContent = records.length;
-
-      // テーブル構築
-      tbody.innerHTML = records.map(r => {
-        // 気分の星マーク生成
-        let starIcons = '';
-        for (let i = 1; i <= 5; i++) {
-          starIcons += i <= r.mood 
-            ? '<span class="text-amber-400">★</span>' 
-            : '<span class="text-slate-200">★</span>';
-        }
-
-        const fatDisplay = r.bodyFat !== null && !isNaN(r.bodyFat) ? `${r.bodyFat.toFixed(1)}%` : '<span class="text-slate-300">-</span>';
-        const sleepDisplay = `${r.sleepHours || 0}h ${r.sleepMinutes || 0}m`;
-
-        return `
-          <tr class="hover:bg-slate-50/80 transition-colors">
-            <td class="py-3 px-4 font-semibold text-slate-800 text-xs sm:text-sm whitespace-nowrap">${r.date}</td>
-            <td class="py-3 px-4 font-bold text-teal-700 whitespace-nowrap">${r.weight.toFixed(1)} kg</td>
-            <td class="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">${fatDisplay}</td>
-            <td class="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">${sleepDisplay}</td>
-            <td class="py-3 px-4 text-sm whitespace-nowrap" title="気分: ${r.mood}/5">${starIcons}</td>
-            <td class="py-3 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${r.memo || ''}">${r.memo || '<span class="text-slate-300">-</span>'}</td>
-            <td class="py-3 px-4 text-center whitespace-nowrap">
-              <button onclick="deleteRecord('${r.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors" title="削除">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      lucide.createIcons();
-    }
-
-    // ==========================================
-    // CSVエクスポート（BOM付きUTF-8対応）
-    // ==========================================
-    function exportToCSV() {
-      const records = getRecords();
-      if (records.length === 0) {
-        showToast('エクスポートするデータがありません');
-        return;
-      }
-
-      // ヘッダー定義
-      const headers = ['日付', '体重(kg)', '体脂肪率(%)', '睡眠時間(時間)', '睡眠時間(分)', '合計睡眠時間(時間換算)', '気分(1-5)', 'メモ'];
-      
-      const rows = records.map(r => {
-        const totalSleep = ((r.sleepHours || 0) + ((r.sleepMinutes || 0) / 60)).toFixed(2);
-        const escapedMemo = (r.memo || '').replace(/"/g, '""'); // CSV用エスケープ
-        return [
-          r.date,
-          r.weight,
-          r.bodyFat !== null ? r.bodyFat : '',
-          r.sleepHours || 0,
-          r.sleepMinutes || 0,
-          totalSleep,
-          r.mood,
-          `"${escapedMemo}"`
-        ].join(',');
-      });
-
-      const csvContent = [headers.join(','), ...rows].join('\r\n');
-
-      // Excel・スプレッドシート文字化け防止用 UTF-8 BOM
-      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-      const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const nowStr = new Date().toISOString().split('T')[0];
-      link.setAttribute('href', url);
-      link.setAttribute('download', `健康記録_${nowStr}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      showToast('CSVファイルを書き出しました');
-    }
-
-    // ==========================================
-    // サンプルデータの投入
-    // ==========================================
-    function initDefaultSampleData() {
-      const today = new Date();
-      const samples = [];
-      const weights = [61.4, 61.2, 61.0, 60.8, 60.5];
-      const fats = [19.2, 19.0, 18.9, 18.7, 18.5];
-      const sleeps = [
-        { h: 6, m: 45, mood: 3, memo: '夜更かし気味だった' },
-        { h: 7, m: 15, mood: 4, memo: '朝散歩をして気持ち良い' },
-        { h: 7, m: 0,  mood: 3, memo: '通常通り' },
-        { h: 8, m: 0,  mood: 5, memo: 'ぐっすり眠れた' },
-        { h: 7, m: 30, mood: 4, memo: 'すっきり起きられた' }
-      ];
-
-      for (let i = 4; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        samples.push({
-          id: 'sample_' + i,
-          date: dateStr,
-          weight: weights[4 - i],
-          bodyFat: fats[4 - i],
-          sleepHours: sleeps[4 - i].h,
-          sleepMinutes: sleeps[4 - i].m,
-          mood: sleeps[4 - i].mood,
-          memo: sleeps[4 - i].memo,
-          updatedAt: new Date().toISOString()
+    // 2. Google スプレッドシートへ送信
+    try {
+      if (GAS_URL && !GAS_URL.includes('XXXXX')) {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors', // クロスドメイン通信用
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
         });
       }
-      saveRecords(samples);
+      alert('保存が完了しました！');
+      this.reset();
+      // 今日の日付を再セット
+      document.getElementById('recordDate').value = new Date().toISOString().split('T')[0];
+      setMood(3);
+    } catch (err) {
+      console.error(err);
+      alert('スプレッドシートへの保存に失敗しました（端末内には保存されています）。');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
     }
+  });
 
-    function loadSampleData() {
-      initDefaultSampleData();
-      renderStats();
-      showToast('サンプルデータを読み込みました');
-    }
-
-    // ==========================================
-    // トースト通知ユーティリティ
-    // ==========================================
-    let toastTimeout;
-    function showToast(message) {
-      const toast = document.getElementById('toast');
-      const msg = document.getElementById('toast-message');
-      msg.textContent = message;
-
-      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
-      toast.classList.add('opacity-100', 'translate-y-0');
-
-      clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => {
-        toast.classList.remove('opacity-100', 'translate-y-0');
-        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
-      }, 2400);
-    }
-  </script>
+  // 初期日付セット
+  document.getElementById('recordDate').value = new Date().toISOString().split('T')[0];
+</script>
 </body>
 </html>
